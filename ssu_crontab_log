@@ -1,4 +1,0 @@
-[Wed Jun 10 04:54:21 2020] add * * * * * ls -al
-[Wed Jun 10 04:59:09 2020] add * * * * * "eco every minute" >ecomsg.txt
-[Wed Jun 10 05:00:12 2020] add 1-5/2 4,5,6 * * * "add" >ecomsg.txt
-[Wed Jun 10 05:02:22 2020] add * * * * * "hihi" > hello.txt
