@@ -11,9 +11,11 @@
 #include<string.h>
 #include<time.h>
 #include<sys/stat.h>
+#include<sys/time.h>
+
+#define SECOND_TO_MICRO 100000
 
 #define BUFFER_SIZE 1024
-
 #define N -1
 #define Y 0
 #define CREATE 1
@@ -38,7 +40,7 @@ int changecnt=0;//changelist의 카운트를 세는 변수
 int backupargc;
 char **backupargv;
 
-//파일 트리 구조체[srcpath에서의 트리1/ dstpath에서의 트리2]
+///파일 트리 구조체[srcpath에서의 트리1/ dstpath에서의 트리2]
 typedef struct f_tree{ 
 	char fname[BUFFER_SIZE];//파일이름 
 	struct dirent **namelist; 
@@ -51,6 +53,7 @@ typedef struct f_tree{
 
 f_tree changelist[BUFFER_SIZE];
 
+void print_runtime(struct timeval *begin, struct timeval *end);
 char *getfilename(char *path);
 //절대경로에서 파일 이름만을 추출하는 함수.[인자 : 절대경로]
 void execute_sync(char *srcpath,char*dstpath);

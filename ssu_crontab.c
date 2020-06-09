@@ -3,6 +3,9 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // 뮤텍스 객체 선언
 
 int main()
 {
+	struct timeval begin,end;
+
+	gettimeofday(&begin,NULL);
 	//ssu_crontab_file 있으면 오픈, 없으면 생성
 	if(access("ssu_crontab_file",F_OK)<0){
 		if(open("ssu_crontab_file",O_RDWR|O_CREAT,0666)<0){
@@ -19,6 +22,21 @@ int main()
 	}
 	//프롬프트 함수로 이동
 	prompt();
+	gettimeofday(&end,NULL);
+	print_runtime(&begin,&end);
+	exit(0);
+}
+void print_runtime(struct timeval *begin, struct timeval *end) // 실행 시간 출력 
+{
+	end->tv_sec -= begin->tv_sec;
+
+	if(end->tv_usec < begin->tv_usec){
+		end->tv_sec--;
+		end->tv_usec += SECOND_TO_MICRO;
+	}
+
+	end->tv_usec -= begin->tv_usec;
+	printf("Runtime: %ld:%ld(sec:usec)\n", end->tv_sec, end->tv_usec);
 }
 void prompt()
 {
@@ -37,20 +55,18 @@ void prompt()
 			fprintf(stderr,"fopen error\n");
 			exit(1);
 		}
-		
+
 		cmdnum=0;
 		fseek(fp,0,SEEK_SET);
 		while(fscanf(fp, "%[^\n]\n", command[cmdnum]) > 0) 
 			cmdnum++;
-		printf("cmdnum: %d\n",cmdnum);
 		for(int i=0;i<cmdnum;i++)
-			  printf("%d. %s\n",i,command[i]);
+			printf("%d. %s\n",i,command[i]);
 		printf("20182611> ");
 		fgets(input,BUFFER_SIZE,stdin);
 		tmp=(char *)malloc(BUFFER_SIZE);
 		strcpy(tmp,input);
 
-		printf("%s\n",tmp);
 
 		//엔터만 입력시 프롬프트 재출력
 		if(strcmp(input,"\n")==0)
@@ -103,7 +119,6 @@ void prompt()
 			cmdnum++;
 			write_file();
 			write_log(command[cmdnum -1],ADD);
-			//cmdnum++;
 			continue;
 		}
 		else if(strcmp(token[0],"remove")==0)
@@ -122,7 +137,6 @@ void prompt()
 				continue;
 			}
 			strcpy(rmbuf,command[rmnum]);//잘 읽힘
-			//printf("rmbuf : %s\n",rmbuf);
 
 			//입력한 번호의 숫자를 crontabfile의 맨 하단으로 이동(제거하기 편하게 하기 위해)
 
@@ -324,7 +338,7 @@ void write_file()
 	for(int i=0;i<cmdnum;i++){			
 
 		fprintf(fp,"%s\n",command[i]);
-//		printf("%s\n",command[i]);
+		//		printf("%s\n",command[i]);
 	}
 	fclose(fp);
 }
@@ -345,7 +359,7 @@ void write_log(char *input,int stat){
 	}	
 	fseek(fp,0,SEEK_END);
 	time(&now);
-	printf("input : %s\n",input);
+	//printf("input : %s\n",input);
 	switch(stat){
 		case ADD:
 			fprintf(fp,"[%.24s] %s %s\n",ctime(&now),"add",input);

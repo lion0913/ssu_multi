@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include<sys/time.h>
 #include <string.h>    
 #include <malloc.h>  
 #include <time.h>     
@@ -16,6 +17,8 @@
 #define FILE_NAME 1024
 #define BUFFER_SIZE 1024
 #define MAX_TOKEN 15
+
+#define SECOND_TO_MICRO 100000
 
 #define MIN 1//0-59
 #define HOUR 2//0-23
@@ -31,6 +34,7 @@ char command[BUFFER_SIZE][BUFFER_SIZE];
 int cmdnum=0;      
 char *token[MAX_TOKEN];    
 
+void print_runtime(struct timeval *begin,struct timeval *end);
 void prompt(void);//프롬프트 출력함수[저장된 명령어 출력 및 등록,삭제의 전반적인 구조 관리]
 int format_check();
 void write_file();

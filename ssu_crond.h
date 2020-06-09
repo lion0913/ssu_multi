@@ -14,9 +14,10 @@
 #include <dirent.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include<sys/time.h>
 
+#define SECOND_TO_MICRO 100000
 
-#define DEBUG
 #define MIN 1//0-59
 #define HOUR 2//0-23
 #define DAY 3//1-31
@@ -34,6 +35,7 @@
 char command[BUFFER_SIZE][BUFFER_SIZE];
 int cmdnum;
 
+void print_runtime(struct timeval *begin,struct timeval *end);
 void write_log(char *input,int stat);
 void *execute_thread(void *cmd);
 void settable(char *period,int *table,int type);

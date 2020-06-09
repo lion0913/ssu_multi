@@ -5,7 +5,10 @@ int main(void){
 	pthread_t tid[BUFFER_SIZE];
 	struct stat statbuf;
 	FILE *fp;
+	struct timeval begin,end;
 	time_t now;
+
+	gettimeofday(&begin,NULL);
 
 	//크론탭파일은 읽기권한으로 오픈
 	if(access("ssu_crontab_file",F_OK)<0){
@@ -27,15 +30,9 @@ int main(void){
 		while(fscanf(fp,"%[^\n]\n",command[cmdnum])>0)
 			cmdnum++;
 
-#ifdef DEBUG
-		printf("cmdnum = %d\n", cmdnum);
-#endif
 
 		for(int i=0;i<cmdnum;i++) {
 			pthread_create(&tid[i],NULL,execute_thread,(void *)command[i]);
-#ifdef DEBUG
-			printf("pthread_create(): tid = %ld, cmd = %s\n", tid[i], command[i]);
-#endif
 		}
 
 		while(1){
@@ -49,10 +46,21 @@ int main(void){
 		}
 
 	}
+	gettimeofday(&end,NULL);
+	print_runtime(&begin,&end);
 	fclose(fp);
 }
 
-
+void print_runtime(struct timeval *begin, struct timeval *end) // 실행 시간 출력 
+{
+	end->tv_sec -= begin->tv_sec;
+	if(end->tv_usec < begin->tv_usec){      
+		end->tv_sec--;    
+		end->tv_usec += SECOND_TO_MICRO;
+	}
+	end->tv_usec -= begin->tv_usec;   
+	printf("Runtime: %ld:%ld(sec:usec)\n", end->tv_sec, end->tv_usec);  
+}
 void *execute_thread(void *cmd){
 
 	char cmd_copy[MAX_TOKEN] = { 0 };
@@ -67,9 +75,6 @@ void *execute_thread(void *cmd){
 	time_t now;
 	time_t exe;
 	struct tm now_t;
-#ifdef DEBUG
-	printf("thread create successful\n");
-#endif
 	strcpy(cmd_copy,(char*)cmd);
 
 	//타임테이블 초기화
@@ -79,21 +84,12 @@ void *execute_thread(void *cmd){
 	timetable[3] = calloc(13, sizeof(int));
 	timetable[4] = calloc(8, sizeof(int));
 
-#ifdef DEBUG
-	printf("timetable initialize complete\n");
-#endif
 
 	tmp=strtok_r(cmd_copy," ", &last);
-#ifdef DEBUG
-	printf("token[%d] = %s\n", argc, tmp);
-#endif
 	strcpy(token[argc++], tmp);
 
 	//띄어쓰기를 기준으로 토큰을 분리
 	while((tmp=strtok_r(NULL, " ", &last)) != NULL){
-#ifdef DEBUG
-		printf("token[%d] = %s\n", argc, tmp);
-#endif
 		strcpy(token[argc++], tmp);
 	}
 
@@ -107,9 +103,6 @@ void *execute_thread(void *cmd){
 		}
 	}
 
-#ifdef DEBUG
-	printf("syscmd:%s\n",syscmd);
-#endif
 
 	now=time(NULL);
 	now_t= *localtime(&now);
@@ -210,7 +203,7 @@ void settable(char *period, int *table, int type){
 
 	while((tmp=strtok_r(NULL,",",&t))!=NULL)
 		strcpy(token[tcnt++],tmp);
-	
+
 	for(int i=0;i<tcnt;i++){
 		memset(a,0,BUFFER_SIZE);
 		memset(b,0,BUFFER_SIZE);
@@ -220,9 +213,6 @@ void settable(char *period, int *table, int type){
 			sscanf(token[i],"%[^/]%c%s",a,&op,b);
 		else
 			sscanf(token[i],"%[^/-]%c%s",a,&op,b);
-#ifdef DEBUG
-		printf("a:%s, op:%c, b:%s\n", a, op, b);
-#endif
 
 		if(op=='/'){
 			int num=atoi(b);
@@ -261,9 +251,6 @@ void settable(char *period, int *table, int type){
 			}
 			else{
 				for(int j=start;j<=end;j++) {
-#ifdef DEBUG
-					printf("table[%d]: true\n", j);
-#endif
 					table[j]=1;
 				}
 			}

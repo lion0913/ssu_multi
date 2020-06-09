@@ -2,14 +2,14 @@
 
 #define DEBUG
 int main(int argc, char *argv[]){	
-	struct timeval start,end;
+	struct timeval begin,end;
 	struct stat statbuf;
 
 	char tmppath[BUFFER_SIZE];//임시 경로 저장공간
 
 	getcwd(pwd,BUFFER_SIZE);//실행위치 경로 받아옴
 
-	gettimeofday(&start,NULL);
+	gettimeofday(&begin,NULL);
 	if(argc < 3){
 		fprintf(stderr,"usage : ssu_rsync [option] <src> <dst>\n");
 		exit(1);
@@ -86,8 +86,19 @@ int main(int argc, char *argv[]){
 	unlink(tmppath);
 
 	gettimeofday(&end,NULL);
-	//ssu_runtime(&betin,&end);
+	print_runtime(&begin,&end);
 	exit(0);
+}
+void print_runtime(struct timeval *begin, struct timeval *end) // 실행 시간 출력 
+{
+	end->tv_sec -= begin->tv_sec;
+	if(end->tv_usec < begin->tv_usec){
+		end->tv_sec--;
+		end->tv_usec += SECOND_TO_MICRO;
+	}
+
+	end->tv_usec -= begin->tv_usec;
+	printf("Runtime: %ld:%ld(sec:usec)\n", end->tv_sec, end->tv_usec);
 }
 void backupdata(int argc, char *argv[]){//backupdata를 생성하는 함수
 	backupargc=argc;
@@ -112,11 +123,11 @@ void recover_file(int signo){//파일을 복구하는 함수
 	 */
 	char tmp[BUFFER_SIZE];
 	char cmd[BUFFER_SIZE];
-	
+
 	memset(tmp,0,BUFFER_SIZE);
 	if(signo==SIGINT)
 	{	
-		
+
 		strncpy(tmp,dstpath,getfilename(dstpath)-dstpath);
 		printf("SIGINT 입력!\n");
 		//printf("dstpath : %s\n",dstpath);
@@ -200,7 +211,7 @@ f_tree* make_tree(char *path){//파일 트리만들기
 		if((!strcmp(head->namelist[i]->d_name,".")) ||(!strcmp(head->namelist[i]->d_name,".."))) 
 			continue; 
 		strcpy(new->fname,head->namelist[i]->d_name);//새로운 대의 파일이름을 생성 
-	//	printf("new->fname : %s\n",new->fname);
+		//	printf("new->fname : %s\n",new->fname);
 		sprintf(tmp,"%.*s/%s",(int)strlen(path),path,new->fname); 
 		strcpy(new->fname,tmp); 
 		stat(tmp,&(new->statbuf)); 
@@ -268,7 +279,7 @@ int compare_file(f_tree *src,f_tree *dst){
 			}
 			else if(src->size != dst->size){
 				//*
-				if(isdir==0)src->state=MODIFY;
+				src->state=MODIFY;
 			}
 			else if(src->statbuf.st_mode !=dst->statbuf.st_mode){
 				src->state=MODIFY;
@@ -313,7 +324,7 @@ void write_change(f_tree *path,int state){
 		if(path->child!=NULL && rOption==1){
 			write_change(path->child,state);
 		}
-	
+
 		path=path->sibling;
 	}
 }
@@ -389,7 +400,7 @@ void write_log(void){//로그에 변경사항을 작성하는 함수
 	FILE *fp;
 	time_t now;
 	char tmp[BUFFER_SIZE];
-	
+
 	memset(tmp,0,BUFFER_SIZE);
 	//로그 파일 오픈(없으면 생성)
 	chdir(pwd);
@@ -406,7 +417,7 @@ void write_log(void){//로그에 변경사항을 작성하는 함수
 	}
 	time(&now);
 	fprintf(fp,"[%.24s] %s\n",ctime(&now),tmp);
-	
+
 	for(int i=0;i<changecnt;i++){
 		switch(changelist[i].state){
 			case CREATE:

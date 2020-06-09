@@ -1,0 +1,4 @@
+* * * * * ls -al
+* * * * * "eco every minute" >ecomsg.txt
+1-5/2 4,5,6 * * * "add" >ecomsg.txt
+* * * * * "hihi" > hello.txt
