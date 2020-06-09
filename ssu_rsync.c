@@ -16,12 +16,18 @@ int main(int argc, char *argv[]){
 	}
 	for(int i=1;i<argc;i++){
 		if(argv[i][0] == '-'){
-			if(argv[i][1]=='r')
+			if(argv[i][1]=='r'){
 				printf("roption!\n");
-			else if(argv[i][1]=='t')
+				rOption=1;
+			}
+			else if(argv[i][1]=='t'){
+				tOption=1;
 				printf("toption!\n");
-			else if(argv[i][1]=='m')
+			}
+			else if(argv[i][1]=='m'){
+				mOption=1;
 				printf("moption!\n");
+			}
 			else{
 				printf("wrong input!\n");
 				exit(1);
@@ -52,17 +58,11 @@ int main(int argc, char *argv[]){
 	lstat(dstpath,&statbuf);
 	if(!S_ISDIR(statbuf.st_mode)){//디렉토리가 아닌 경우
 		fprintf(stderr,"<dst> must be a directory!\n");
-		printf("dstpath: %s\n",dstpath);
 		exit(1);
 	}
 
-
-	printf("dstpath : %s\n",dstpath);
-	printf("srcpath : %s\n",srcpath);
-
 	memset(tmppath,0,BUFFER_SIZE);
 	strncpy(tmppath,dstpath,getfilename(dstpath)-dstpath);
-	printf("tmppath : %s\n",tmppath);
 
 	if(chdir(tmppath)<0){
 		fprintf(stderr,"chdir error : %s\n",tmppath);
@@ -76,7 +76,6 @@ int main(int argc, char *argv[]){
 	char command[BUFFER_SIZE];
 	sprintf(command,"tar -cf %s.swp %s",getfilename(dstpath),getfilename(dstpath));
 	system(command);
-	printf("압축파일 생성 성공!\n");
 
 	chdir(pwd);
 	signal(SIGINT,recover_file);
@@ -84,7 +83,6 @@ int main(int argc, char *argv[]){
 	printf("sync실행\n");
 	//생성된 스왑파일 삭제
 	sprintf(tmppath,"%.*s.swp",(int)strlen(dstpath),dstpath);
-	printf("스왑파일 삭제\n");
 	unlink(tmppath);
 
 	gettimeofday(&end,NULL);
@@ -114,11 +112,14 @@ void recover_file(int signo){//파일을 복구하는 함수
 	 */
 	char tmp[BUFFER_SIZE];
 	char cmd[BUFFER_SIZE];
+	
+	memset(tmp,0,BUFFER_SIZE);
 	if(signo==SIGINT)
 	{	
-		printf("sigint 캐치!\n");
+		
 		strncpy(tmp,dstpath,getfilename(dstpath)-dstpath);
-		//printf("tmppath : %s\n",tmppath);
+		printf("SIGINT 입력!\n");
+		//printf("dstpath : %s\n",dstpath);
 		chdir(tmp);
 
 		remove_dir(dstpath);
@@ -126,6 +127,7 @@ void recover_file(int signo){//파일을 복구하는 함수
 		system(cmd);
 		unlink(cmd+9);
 	}
+	exit(1);
 
 }
 void remove_dir(char *path){
@@ -158,9 +160,8 @@ void execute_sync(char *srcpath,char*dstpath){
 	//파일 트리 생성하기(src, dst)
 	srctree=make_tree(srcpath);
 	dsttree=make_tree(dstpath);
-	printf("srctree:%s\n",srctree);
-	printf("srctree 새끼 :%s\n",srctree->child);
 	isfirst=0;
+	changecnt=0;
 	//src의 성격 확인하기(디렉토리/파일)
 	if(S_ISDIR(srctree->statbuf.st_mode)){
 		//디렉토리일 경우 안에 들어간 파일을 비교
@@ -172,6 +173,9 @@ void execute_sync(char *srcpath,char*dstpath){
 		compare_file(srctree,dsttree->child);
 		write_change(srctree,CREATE);
 	}
+	if(mOption==1)
+		write_change(srctree,DELETE);
+
 	apply_change();//변경사항을 적용하는 함수
 
 }
@@ -179,7 +183,7 @@ void execute_sync(char *srcpath,char*dstpath){
 f_tree* make_tree(char *path){//파일 트리만들기
 	int cnt; 
 	int isfirst=1; 
-	char tmp[BUFFER_SIZE]; 
+	char tmp[BUFFER_SIZE*2]; 
 
 	f_tree *head; 
 	f_tree *now; 
@@ -196,7 +200,8 @@ f_tree* make_tree(char *path){//파일 트리만들기
 		if((!strcmp(head->namelist[i]->d_name,".")) ||(!strcmp(head->namelist[i]->d_name,".."))) 
 			continue; 
 		strcpy(new->fname,head->namelist[i]->d_name);//새로운 대의 파일이름을 생성 
-		sprintf(tmp,"%s/%s",path,new->fname); 
+	//	printf("new->fname : %s\n",new->fname);
+		sprintf(tmp,"%.*s/%s",(int)strlen(path),path,new->fname); 
 		strcpy(new->fname,tmp); 
 		stat(tmp,&(new->statbuf)); 
 		if(S_ISDIR(new->statbuf.st_mode))//파일의 성격이 디렉토리라면 다시 트리를 만듦(재귀) 
@@ -254,21 +259,18 @@ void compare_tree(f_tree *src,f_tree *dst){
 
 int compare_file(f_tree *src,f_tree *dst){ 
 	while(dst!=NULL){
-		//printf("compare_file들엉ㅁ\n");
-		//[1]두 파일의 이름이 같은 경우
-		if(!strcmp(src->fname+strlen(srcpath)-strlen(getfilename(srcpath)),dst->fname+strlen(dstpath)+1)){
+		//[1]두 파일의 이름이 같은 경우(디렉토리일 경우와 일반 파일일 경우를 나누어서 계산해줘야함)
+		if((isdir==1 && !strcmp(src->fname+strlen(srcpath)+1,dst->fname+strlen(dstpath)+1))||(isdir==0 && !strcmp(getfilename(src->fname),dst->fname+strlen(dstpath)+1))){
 			src->state=Y;
 			//파일의 수정시간,크기, 형식이 다른 경우 -> 상태를 MODIFY로 변경
 			if(src->statbuf.st_mtime != dst->statbuf.st_mtime){
-				printf("compere_file : mtime is different!\n");
 				src->state=MODIFY;
 			}
 			else if(src->size != dst->size){
-				printf("compare_file : size is different!\n");
-				src->state=MODIFY;
+				//*
+				if(isdir==0)src->state=MODIFY;
 			}
 			else if(src->statbuf.st_mode !=dst->statbuf.st_mode){
-				printf("compare_file : type is different!\n");
 				src->state=MODIFY;
 			}
 			dst->state=Y;
@@ -282,9 +284,7 @@ int compare_file(f_tree *src,f_tree *dst){
 	return 0;
 }
 void write_change(f_tree *path,int state){
-	changecnt=0;//카운트변수초기화
 	char tmp[BUFFER_SIZE];
-	//printf("write_change[path] : %s\n",path);
 
 	while(path!=NULL){
 		switch(path->state){
@@ -292,16 +292,11 @@ void write_change(f_tree *path,int state){
 				if(state==CREATE){
 					strcpy(changelist[changecnt].fname,path->fname);
 
-					printf("changelist[%d] : %s\n",changecnt,changelist[changecnt].fname);
 					changelist[changecnt].state=CREATE;
 				}
 				else if(state==DELETE){
-					sprintf(tmp,"%.*s/%s",strlen(dstpath),dstpath,getfilename(dstpath));
-					if(strstr(path->fname,tmp) ==NULL||!strcmp(path->fname,tmp))
-						break;
 					strcpy(changelist[changecnt].fname,path->fname);
 					changelist[changecnt].state=DELETE;
-					printf("changelist[%d] : %s\n",changecnt,changelist[changecnt].fname);
 				}
 				changelist[changecnt].size=path->size;
 				changecnt++;
@@ -312,15 +307,13 @@ void write_change(f_tree *path,int state){
 				strcpy(changelist[changecnt].fname, path->fname); 
 				changelist[changecnt].state = MODIFY; 
 				changelist[changecnt].size = path->size; 
-				printf("changelist[%d] : %s\n",changecnt,changelist[changecnt].fname);
 				changecnt++;
 				break; 
 		} 
-		if(isfirst==1)
-			if(path->sibling !=NULL){
-				isfirst=0;
-				write_change(path->child,state);
-			}
+		if(path->child!=NULL && rOption==1){
+			write_change(path->child,state);
+		}
+	
 		path=path->sibling;
 	}
 }
@@ -334,29 +327,26 @@ void apply_change(void){
 	size_t length;
 
 	sprintf(path,"%.*s",(int)strlen(dstpath),dstpath);
-	printf("applychange[path]이동할 위치 : %s\n",path);
-/*
+
 	if(isdir==1 && access(path,F_OK)<0){
 		//디렉토리이고 목적 파일에 해당 디렉토리가 없다면 디렉토리 생성
-		//lstat(srcpath,&statbuf);
-		printf("생성할 디렉토리 이름 : %s\n",path);
-		//mkdir(path,statbuf.st_mode);
-	}*/
+		lstat(srcpath,&statbuf);
+		mkdir(path,statbuf.st_mode);
+	}
 	for(int i=0;i<changecnt;i++){
 		switch(changelist[i].state){
 			case CREATE :
 			case MODIFY : 
-				//printf("들어옴\n");
 				memset(path, 0, BUFFER_SIZE); 
-				printf("changelist: %s\n", changelist[i].fname);
 				if(lstat(changelist[i].fname, &statbuf) < 0)
 					printf("lstat error\n");
-				sprintf(path, "%.*s/%s",strlen(dstpath),dstpath,changelist[i].fname + strlen(srcpath) + 1); 
-				printf("renewal: path = %s\n", path); 
+				if(isdir)
+					sprintf(path, "%.*s/%s",(int)strlen(dstpath),dstpath,changelist[i].fname + strlen(srcpath) + 1); 
+				else
+					sprintf(path,"%.*s/%s",(int)strlen(dstpath),dstpath,changelist[i].fname+strlen(srcpath)-strlen(getfilename(srcpath)));
 
 				if (S_ISDIR(statbuf.st_mode)){ 
 					mkdir(path, 0755); 
-					printf("디렉토리 생성 완료 : %s\n",path);
 				}
 				else { 
 					if ((fd1 = open(changelist[i].fname, O_RDONLY)) < 0) {  
@@ -383,35 +373,40 @@ void apply_change(void){
 				utime(path, &namelist);
 				chmod(path, statbuf.st_mode); 
 				break; 
+			case DELETE : 
+				//printf("delete changelist[i].fname:%s\n",changelist[i].fname);
+				lstat(changelist[i].fname,&statbuf);
+				if(S_ISDIR(statbuf.st_mode))
+					remove_dir(changelist[i].fname);
+				else
+					remove(changelist[i].fname);
+				break;
 		}
 	}
 	write_log();
 }
-void write_log(void){
+void write_log(void){//로그에 변경사항을 작성하는 함수
 	FILE *fp;
 	time_t now;
 	char tmp[BUFFER_SIZE];
 	
 	memset(tmp,0,BUFFER_SIZE);
 	//로그 파일 오픈(없으면 생성)
-	printf("pwd : %s\n",pwd);
 	chdir(pwd);
 	if((fp=fopen("ssu_rsync_log","r+"))==NULL){
 		fp=fopen("ssu_rsync_log","w");
 	}
 	fseek(fp,0,SEEK_END);
+
+	//첫번째 줄에 나오는 동기화 완료시간을 입력
 	strcpy(tmp,"ssu_rsync");
 	for(int i=1;i<backupargc;i++){
 		strcat(tmp," ");
 		strcat(tmp,backupargv[i]);
-		//printf("backupargv[%d] : %s\n",i,backupargv[i]);
 	}
-	printf("tmp : %s\n",tmp);
 	time(&now);
-
-
 	fprintf(fp,"[%.24s] %s\n",ctime(&now),tmp);
-	printf("changecnt:%d\n",changecnt);
+	
 	for(int i=0;i<changecnt;i++){
 		switch(changelist[i].state){
 			case CREATE:
@@ -419,13 +414,15 @@ void write_log(void){
 				if(isdir==1){
 
 					fprintf(fp,"		%s %dbytes\n",changelist[i].fname+strlen(srcpath)+1,changelist[i].size);
-					printf("		%s %dbytes\n",changelist[i].fname+strlen(srcpath)+1,changelist[i].size);
 				}
 				else{
 
 					fprintf(fp,"		%s %dbytes\n",changelist[i].fname+strlen(srcpath)-strlen(getfilename(srcpath)),changelist[i].size);
-					printf("		%s %dbytes\n",changelist[i].fname+strlen(srcpath)-strlen(getfilename(srcpath)),changelist[i].size);
 				}
+				break;
+			case DELETE : 
+				fprintf(fp,"		%s delete\n",changelist[i].fname+strlen(srcpath)+1);
+				break;
 		}
 	}
 	fclose(fp);

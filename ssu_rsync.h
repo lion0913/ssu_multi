@@ -20,6 +20,10 @@
 #define MODIFY 2
 #define DELETE 3
 
+//옵션 함수
+int rOption=0;
+int tOption=0;
+int mOption=0;
 
 char pwd[BUFFER_SIZE];//실행위치의 경로 받아오는 함수
 char srcpath[BUFFER_SIZE];//src의 경로
