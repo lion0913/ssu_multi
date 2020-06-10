@@ -16,8 +16,7 @@ int main(int argc, char *argv[]){
 	}
 	for(int i=1;i<argc;i++){
 		if(argv[i][0] == '-'){
-			if(argv[i][1]=='r'){
-				printf("roption!\n");
+			if(argv[i][1]=='r'){//구현
 				rOption=1;
 			}
 			else if(argv[i][1]=='t'){
@@ -80,7 +79,7 @@ int main(int argc, char *argv[]){
 	chdir(pwd);
 	signal(SIGINT,recover_file);
 	execute_sync(srcpath,dstpath);//동기화 실행
-	printf("sync실행\n");
+	//printf("sync실행\n");
 	//생성된 스왑파일 삭제
 	sprintf(tmppath,"%.*s.swp",(int)strlen(dstpath),dstpath);
 	unlink(tmppath);
@@ -166,7 +165,8 @@ void remove_dir(char *path){
 }
 void execute_sync(char *srcpath,char*dstpath){
 	f_tree *srctree;
-	f_tree *dsttree;
+	f_tree *dsttree;	
+	isdir=0;
 
 	//파일 트리 생성하기(src, dst)
 	srctree=make_tree(srcpath);
@@ -177,6 +177,7 @@ void execute_sync(char *srcpath,char*dstpath){
 	if(S_ISDIR(srctree->statbuf.st_mode)){
 		//디렉토리일 경우 안에 들어간 파일을 비교
 		compare_tree(srctree->child,dsttree->child);
+		isdir=1;
 		write_change(srctree->child,CREATE);//비교했을때 새롭게 생성된 파일을 기록
 	}
 	else{
@@ -338,7 +339,7 @@ void apply_change(void){
 	size_t length;
 
 	sprintf(path,"%.*s",(int)strlen(dstpath),dstpath);
-
+	printf("pathname : %s\n",path);
 	if(isdir==1 && access(path,F_OK)<0){
 		//디렉토리이고 목적 파일에 해당 디렉토리가 없다면 디렉토리 생성
 		lstat(srcpath,&statbuf);
@@ -385,12 +386,12 @@ void apply_change(void){
 				chmod(path, statbuf.st_mode); 
 				break; 
 			case DELETE : 
-				//printf("delete changelist[i].fname:%s\n",changelist[i].fname);
+		//		printf("delete changelist[i].fname:%s\n",changelist[i].fname);
 				lstat(changelist[i].fname,&statbuf);
-				if(S_ISDIR(statbuf.st_mode))
+			/*	if(S_ISDIR(statbuf.st_mode))
 					remove_dir(changelist[i].fname);
 				else
-					remove(changelist[i].fname);
+					remove(changelist[i].fname);*/
 				break;
 		}
 	}
@@ -432,7 +433,7 @@ void write_log(void){//로그에 변경사항을 작성하는 함수
 				}
 				break;
 			case DELETE : 
-				fprintf(fp,"		%s delete\n",changelist[i].fname+strlen(srcpath)+1);
+				fprintf(fp,"		%s delete\n",changelist[i].fname+strlen(dstpath)+1);
 				break;
 		}
 	}

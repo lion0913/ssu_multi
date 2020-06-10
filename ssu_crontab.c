@@ -62,6 +62,7 @@ void prompt()
 			cmdnum++;
 		for(int i=0;i<cmdnum;i++)
 			printf("%d. %s\n",i,command[i]);
+		printf("\n");
 		printf("20182611> ");
 		fgets(input,BUFFER_SIZE,stdin);
 		tmp=(char *)malloc(BUFFER_SIZE);
@@ -148,11 +149,11 @@ void prompt()
 
 			cmdnum--;
 			write_file();
-			printf("write_file 에 들어갈 리스트들\n");
-			for(int i=0;i<cmdnum;i++){
-				printf("%s\n",command[i]);
-			}
-			write_log(rmbuf,REMOVE);
+			//printf("write_file 에 들어갈 리스트들\n");
+			//for(int i=0;i<cmdnum;i++){
+			//	printf("%s\n",command[i]);
+			//}
+		//	write_log(rmbuf,REMOVE);
 
 
 			//등록된 명령어 번호의 범위에 들어있지 않은 경우
@@ -161,7 +162,7 @@ void prompt()
 		}
 		else if(strcmp(token[0],"exit")==0)
 		{
-			exit(0);
+			return;
 		}
 		else
 		{

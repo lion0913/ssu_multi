@@ -32,10 +32,14 @@
 #define REMOVE 2 
 #define RUN 3
 
+struct timeval begin,end;
+
+pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 char command[BUFFER_SIZE][BUFFER_SIZE];
 int cmdnum;
 
 void print_runtime(struct timeval *begin,struct timeval *end);
 void write_log(char *input,int stat);
 void *execute_thread(void *cmd);
+void catchint(int sigho);
 void settable(char *period,int *table,int type);

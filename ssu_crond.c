@@ -1,15 +1,15 @@
 #include "ssu_crond.h"
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int main(void){
 	pthread_t tid[BUFFER_SIZE];
 	struct stat statbuf;
 	FILE *fp;
-	struct timeval begin,end;
+
 	time_t now;
 
 	gettimeofday(&begin,NULL);
 
+	signal(SIGINT,(void *)catchint);
 	//크론탭파일은 읽기권한으로 오픈
 	if(access("ssu_crontab_file",F_OK)<0){
 		if((fp=fopen("ssu_crontab_file","w"))<0){
@@ -46,9 +46,13 @@ int main(void){
 		}
 
 	}
+	fclose(fp);
+	exit(0);
+}
+void catchint(int signo){
 	gettimeofday(&end,NULL);
 	print_runtime(&begin,&end);
-	fclose(fp);
+	exit(0);
 }
 
 void print_runtime(struct timeval *begin, struct timeval *end) // 실행 시간 출력 
@@ -60,6 +64,7 @@ void print_runtime(struct timeval *begin, struct timeval *end) // 실행 시간 
 	}
 	end->tv_usec -= begin->tv_usec;   
 	printf("Runtime: %ld:%ld(sec:usec)\n", end->tv_sec, end->tv_usec);  
+
 }
 void *execute_thread(void *cmd){
 
@@ -123,10 +128,10 @@ void *execute_thread(void *cmd){
 			now=time(NULL);//시간 측정
 
 			//대기 시간 = 수행 예정 시간-현재시간
-			printf("대기시간 : %ld\n",exe-now);
+			//printf("대기시간 : %ld\n",exe-now);
 			sleep(exe-now);
 			system(syscmd);
-			printf("실행!!\n");
+			//printf("실행!!\n");
 			write_log((char *)cmd,RUN);
 		}
 	}
